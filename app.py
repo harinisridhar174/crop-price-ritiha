@@ -3,14 +3,13 @@ import pandas as pd
 import pickle
 import numpy as np
 from datetime import datetime, timedelta
-import base64  # 👈 Needed for background image
+import base64  # for background image
 
 # ----------------- Page Config -----------------
 st.set_page_config(page_title="Agri Crop Price Predictor", layout="wide")
 
 # ----------------- Background Image Function -----------------
 def add_bg_from_local(image_file):
-    """Adds a background image from a local file"""
     with open(image_file, "rb") as f:
         encoded = base64.b64encode(f.read()).decode()
     st.markdown(
@@ -27,8 +26,8 @@ def add_bg_from_local(image_file):
         unsafe_allow_html=True
     )
 
-# Call the background setter (⚠️ put your image in same folder as this script)
-add_bg_from_local("plough_tool.jpg")
+# Call background (make sure this file is in same folder as script)
+add_bg_from_local("stock-vector-silhouette-farmer-plowing-260nw-1285562308.jpg")
 
 # ----------------- Load Model -----------------
 with open('crop_price_model.pkl', 'rb') as file:
@@ -36,7 +35,7 @@ with open('crop_price_model.pkl', 'rb') as file:
 
 model = model_data['model']
 scaler = model_data['scaler']
-crop_state_data = model_data['crop_state_data']
+crop_state_data = model_data['crop_state_data']  # Data to map crop & state to numeric if needed
 
 # ----------------- Title -----------------
 st.title("🌾 Agri Crop Price Predictor")
@@ -69,7 +68,7 @@ if st.button("Predict Price and Recommendation"):
         # Recommendation logic
         if predicted_price > current_price * 1.05:
             recommendation = "Wait to sell for higher profit"
-            best_time = datetime.now() + timedelta(days=7)
+            best_time = datetime.now() + timedelta(days=7)  # Example: 1 week later
         else:
             recommendation = "Sell now"
             best_time = datetime.now()
