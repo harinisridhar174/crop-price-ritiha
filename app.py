@@ -9,7 +9,7 @@ st.title("🌾 Crop Price Predictor (With Trend Indicator)")
 # Replace with your actual CSV later
 data = pd.DataFrame({
     'Crop': ['Wheat', 'Rice', 'Maize', 'Sugarcane'],
-    'State': ['State1', 'State2', 'State1', 'State2'],
+    'State': ['Kerala', 'Tamilnadu', 'Telangana', 'Karnataka'],
     'Price': [2000, 1500, 1800, 2200]
 })
 
@@ -53,3 +53,4 @@ if st.button("Get Suggestion with Trend"):
         st.markdown(f"<p style='color:{trend_color}; font-size:18px;'>{trend}</p>", unsafe_allow_html=True)
     else:
         st.warning("No data available for this crop/state combination.")
+
