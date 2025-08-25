@@ -2,10 +2,11 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Crop Price Predictor with Trend", layout="centered")
-st.title("🌾 Crop Price Predictor (with Trend Indicator)")
+st.set_page_config(page_title="Crop Price Predictor", layout="centered")
+st.title("🌾 Crop Price Predictor (With Trend Indicator)")
 
 # ----------------- Sample Data -----------------
+# Replace with your actual CSV later
 data = pd.DataFrame({
     'Crop': ['Wheat', 'Rice', 'Maize', 'Sugarcane'],
     'State': ['State1', 'State2', 'State1', 'State2'],
@@ -16,8 +17,14 @@ data = pd.DataFrame({
 crop = st.selectbox("Select Crop", data['Crop'].unique())
 state = st.selectbox("Select State", data['State'].unique())
 
-# Threshold entry
-threshold = st.number_input("Enter Threshold Value (₹)", min_value=0, value=1800, step=100)
+# NEW: Threshold input
+threshold = st.number_input(
+    "Enter Threshold Price (₹)", 
+    min_value=100, 
+    max_value=10000, 
+    value=1800,  # default value
+    step=100
+)
 
 # ----------------- Predict Price & Suggestion -----------------
 if st.button("Get Suggestion with Trend"):
@@ -27,25 +34,22 @@ if st.button("Get Suggestion with Trend"):
     if not df.empty:
         predicted_price = df['Price'].values[0]
         avg_price = data[data['Crop'] == crop]['Price'].mean()
-        
-        # Suggestion (basic logic)
         suggestion = "✅ Sell" if predicted_price >= avg_price else "⏳ Wait"
         
-        # Trend check
+        # Trend analysis based on threshold
         if predicted_price > threshold:
-            trend = "📈 Price is INCREASING (above threshold)"
+            trend = "📈 Increasing (above threshold)"
             trend_color = "green"
         elif predicted_price < threshold:
-            trend = "📉 Price is DECREASING (below threshold)"
+            trend = "📉 Decreasing (below threshold)"
             trend_color = "red"
         else:
-            trend = "➖ Price is STABLE (at threshold)"
+            trend = "➖ Stable (equal to threshold)"
             trend_color = "orange"
-        
-        # Output blocks
+
+        # Show results
         st.success(f"Predicted Price: ₹{predicted_price}")
         st.info(f"Suggestion: {suggestion}")
-        st.markdown(f"<h4 style='color:{trend_color}'>{trend}</h4>", unsafe_allow_html=True)
-
+        st.markdown(f"<p style='color:{trend_color}; font-size:18px;'>{trend}</p>", unsafe_allow_html=True)
     else:
-        st.warning("⚠️ No data available for this crop/state combination.")
+        st.warning("No data available for this crop/state combination.")
