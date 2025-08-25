@@ -1,89 +1,80 @@
 import streamlit as st
-import joblib
+import pandas as pd
+import pickle
 import numpy as np
-from gtts import gTTS
-import os
+from datetime import datetime, timedelta
+import base64  # 👈 Needed for background image
 
-# Page setup
-st.set_page_config(page_title="🌾 Crop Price Prediction", layout="centered")
-st.title("🌾 Crop Price Prediction App")
-st.subheader("Helping Farmers Decide When to Sell Crops")
+# ----------------- Page Config -----------------
+st.set_page_config(page_title="Agri Crop Price Predictor", layout="wide")
 
-# Load models
-@st.cache_resource
-def load_models():
-    return joblib.load("lstm_models.joblib")
+# ----------------- Background Image Function -----------------
+def add_bg_from_local(image_file):
+    """Adds a background image from a local file"""
+    with open(image_file, "rb") as f:
+        encoded = base64.b64encode(f.read()).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/png;base64,{encoded}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-models = load_models()
+# Call the background setter (⚠️ put your image in same folder as this script)
+add_bg_from_local("plough_tool.jpg")
 
-# Original Wikipedia images for crops
-crop_images = {
-    "rice": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Rice_paddy_field_in_Bangladesh.jpg",
-    "wheat": "https://upload.wikimedia.org/wikipedia/commons/e/e3/Wheat_close-up.JPG",
-    "maize": "https://upload.wikimedia.org/wikipedia/commons/7/79/Maize_field.jpg",
-    "sugarcane": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Sugarcane_field.jpg",
-    "cotton": "https://upload.wikimedia.org/wikipedia/commons/d/d4/CottonPlant.JPG",
-    "soybean": "https://upload.wikimedia.org/wikipedia/commons/8/8d/Soybean_field.jpg",
-    "barley": "https://upload.wikimedia.org/wikipedia/commons/f/f0/Barley_field.jpg",
-    "pulses": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Pulses_in_India.jpg",
-    "groundnut": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Groundnut_field.jpg",
-    "mustard": "https://upload.wikimedia.org/wikipedia/commons/1/18/Mustard_field_in_India.jpg"
-}
+# ----------------- Load Model -----------------
+with open('crop_price_model.pkl', 'rb') as file:
+    model_data = pickle.load(file)
 
-# Language option
-language = st.radio("Choose Language", ["English", "தமிழ் (Tamil)", "Both"])
+model = model_data['model']
+scaler = model_data['scaler']
+crop_state_data = model_data['crop_state_data']
 
-# User input
-crop = st.selectbox("Select Crop", sorted({c for c, _ in models.keys()}))
-state = st.selectbox("Select State", sorted({s for _, s in models.keys()}))
-current_price = st.number_input("Enter Current Price (₹ per quintal)", min_value=0.0, step=0.1)
+# ----------------- Title -----------------
+st.title("🌾 Agri Crop Price Predictor")
 
-if st.button("Predict"):
-    key = (crop.lower(), state.lower())
-    if key in models:
-        model, scaler = models[key]
+st.write("Enter the details below to get the predicted price and sell recommendation:")
 
-        # Prepare sequence
-        last_sequence = np.array([current_price] * 30).reshape(-1, 1)
-        last_sequence_scaled = scaler.transform(last_sequence)
-        X_input = last_sequence_scaled.reshape(1, 30, 1)
+# ----------------- Farmer Inputs -----------------
+crop_name = st.selectbox("Select Crop", crop_state_data['Crop'].unique())
+state = st.selectbox("Select State", crop_state_data['State'].unique())
+current_price = st.number_input("Enter Current Market Price", min_value=0.0, value=0.0)
 
-        # Predict price
-        predicted_price = model.predict(X_input)[0][0]
-        predicted_price = scaler.inverse_transform([[predicted_price]])[0][0]
-
-        # Decision logic
-        if predicted_price > current_price:
-            decision = "SELL"
-            english_advice = f"Price is expected to rise to ₹{predicted_price:.2f}. You can sell now."
-            tamil_advice = f"விலை ₹{predicted_price:.2f} வரை உயரும். நீங்கள் இப்போது விற்கலாம்."
-            color = "green"
-        else:
-            decision = "HOLD"
-            english_advice = f"Price may drop to ₹{predicted_price:.2f}. It is better to hold."
-            tamil_advice = f"விலை ₹{predicted_price:.2f} வரை குறையும். காத்திருப்பது நல்லது."
-            color = "red"
-
-        # Show result
-        st.markdown(f"### Prediction: <span style='color:{color}; font-size:24px;'>{decision}</span>", unsafe_allow_html=True)
-
-        if language == "English":
-            st.write(english_advice)
-        elif language == "தமிழ் (Tamil)":
-            st.write(f"**தமிழில் அறிவுரை:** {tamil_advice}")
-        else:
-            st.write(english_advice)
-            st.write(f"**தமிழில் அறிவுரை:** {tamil_advice}")
-
-        # Show crop image from Wikipedia
-        if crop.lower() in crop_images:
-            st.image(crop_images[crop.lower()], caption=f"{crop.capitalize()} Crop", use_column_width=True)
-
-        # Audio for Tamil advice
-        if language in ["தமிழ் (Tamil)", "Both"]:
-            tts = gTTS(tamil_advice, lang='ta')
-            audio_path = "advice_tamil.mp3"
-            tts.save(audio_path)
-            st.audio(audio_path, format="audio/mp3")
+# ----------------- Prediction -----------------
+if st.button("Predict Price and Recommendation"):
+    
+    input_df = crop_state_data[(crop_state_data['Crop']==crop_name) & 
+                               (crop_state_data['State']==state)].copy()
+    
+    if input_df.empty:
+        st.warning("No data available for this crop & state combination.")
     else:
-        st.error("Model for selected crop and state is not available.")
+        last_features = input_df.iloc[-1:].drop(['Price'], axis=1).values
+        last_scaled = scaler.transform(last_features)
+        
+        # Predict price
+        predicted_price_scaled = model.predict(last_scaled)
+        predicted_price = scaler.inverse_transform(
+            np.hstack([last_features[:, :-1], predicted_price_scaled.reshape(-1,1)])
+        )[:, -1][0]
+        
+        # Recommendation logic
+        if predicted_price > current_price * 1.05:
+            recommendation = "Wait to sell for higher profit"
+            best_time = datetime.now() + timedelta(days=7)
+        else:
+            recommendation = "Sell now"
+            best_time = datetime.now()
+        
+        # ----------------- Display Results -----------------
+        st.success(f"Predicted Price: ₹{predicted_price:.2f}")
+        st.info(f"Recommendation: {recommendation}")
+        st.info(f"Suggested Best Time to Sell: {best_time.strftime('%Y-%m-%d')}")
