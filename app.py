@@ -54,3 +54,4 @@ if st.button("Get Suggestion with Trend"):
     else:
         st.warning("No data available for this crop/state combination.")
 
+
