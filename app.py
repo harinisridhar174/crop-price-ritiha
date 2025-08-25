@@ -30,7 +30,7 @@ def add_bg_from_local(image_file):
 add_bg_from_local("stock-vector-silhouette-farmer-plowing-260nw-1285562308.jpg")
 
 # ----------------- Load Model -----------------
-with open('Istm_models.pkl', 'rb') as file:
+with open('lstm_models.pkl', 'rb') as file:   # <-- your file name here
     model_data = pickle.load(file)
 
 model = model_data['model']
@@ -77,4 +77,3 @@ if st.button("Predict Price and Recommendation"):
         st.success(f"Predicted Price: ₹{predicted_price:.2f}")
         st.info(f"Recommendation: {recommendation}")
         st.info(f"Suggested Best Time to Sell: {best_time.strftime('%Y-%m-%d')}")
-
