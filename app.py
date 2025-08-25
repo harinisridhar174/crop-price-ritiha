@@ -10,6 +10,7 @@ st.set_page_config(page_title="Agri Crop Price Predictor", layout="wide")
 
 # ----------------- Background Image Function -----------------
 def add_bg_from_local(image_file):
+    """Set background image for Streamlit app"""
     with open(image_file, "rb") as f:
         encoded = base64.b64encode(f.read()).decode()
     st.markdown(
@@ -26,16 +27,22 @@ def add_bg_from_local(image_file):
         unsafe_allow_html=True
     )
 
-# Call background (make sure this file is in same folder as script)
+# Call background (✅ use your uploaded image)
 add_bg_from_local("stock-vector-silhouette-farmer-plowing-260nw-1285562308.jpg")
 
 # ----------------- Load Model -----------------
-with open('lstm_models.pkl', 'rb') as file:   # <-- your file name here
-    model_data = pickle.load(file)
+MODEL_FILE = "lstm_models.pkl"   # ✅ Correct filename
 
-model = model_data['model']
-scaler = model_data['scaler']
-crop_state_data = model_data['crop_state_data']  # Data to map crop & state to numeric if needed
+try:
+    with open(MODEL_FILE, "rb") as file:
+        model_data = pickle.load(file)
+
+    model = model_data["model"]
+    scaler = model_data["scaler"]
+    crop_state_data = model_data["crop_state_data"]  # Data to map crop & state to numeric
+except FileNotFoundError:
+    st.error(f"❌ Model file '{MODEL_FILE}' not found. Please make sure it's in the same folder as app.py.")
+    st.stop()
 
 # ----------------- Title -----------------
 st.title("🌾 Agri Crop Price Predictor")
@@ -43,20 +50,21 @@ st.title("🌾 Agri Crop Price Predictor")
 st.write("Enter the details below to get the predicted price and sell recommendation:")
 
 # ----------------- Farmer Inputs -----------------
-crop_name = st.selectbox("Select Crop", crop_state_data['Crop'].unique())
-state = st.selectbox("Select State", crop_state_data['State'].unique())
+crop_name = st.selectbox("Select Crop", crop_state_data["Crop"].unique())
+state = st.selectbox("Select State", crop_state_data["State"].unique())
 current_price = st.number_input("Enter Current Market Price", min_value=0.0, value=0.0)
 
 # ----------------- Prediction -----------------
 if st.button("Predict Price and Recommendation"):
     
-    input_df = crop_state_data[(crop_state_data['Crop']==crop_name) & 
-                               (crop_state_data['State']==state)].copy()
+    input_df = crop_state_data[(crop_state_data["Crop"] == crop_name) & 
+                               (crop_state_data["State"] == state)].copy()
     
     if input_df.empty:
-        st.warning("No data available for this crop & state combination.")
+        st.warning("⚠️ No data available for this crop & state combination.")
     else:
-        last_features = input_df.iloc[-1:].drop(['Price'], axis=1).values
+        # Use last available data
+        last_features = input_df.iloc[-1:].drop(["Price"], axis=1).values
         last_scaled = scaler.transform(last_features)
         
         # Predict price
@@ -67,10 +75,10 @@ if st.button("Predict Price and Recommendation"):
         
         # Recommendation logic
         if predicted_price > current_price * 1.05:
-            recommendation = "Wait to sell for higher profit"
+            recommendation = "✅ Wait to sell for higher profit"
             best_time = datetime.now() + timedelta(days=7)  # Example: 1 week later
         else:
-            recommendation = "Sell now"
+            recommendation = "📉 Sell now"
             best_time = datetime.now()
         
         # ----------------- Display Results -----------------
